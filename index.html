@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AEO Readiness Scanner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 40px 20px;
+            color: #1a1a1a;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            margin-bottom: 40px;
+        }
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .header p {
+            font-size: 1em;
+            color: #666;
+        }
+        .history-section {
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 24px;
+        }
+        .history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .history-section h3 {
+            font-size: 1em;
+            font-weight: 600;
+            margin: 0;
+            color: #1a1a1a;
+        }
+        .clear-history-btn {
+            padding: 6px 12px;
+            background: transparent;
+            color: #666;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .clear-history-btn:hover {
+            background: #f5f5f5;
+            color: #1a1a1a;
+            border-color: #1a1a1a;
+        }
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .history-item {
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item:hover {
+            background: #f5f5f5;
+        }
+        .history-url {
+            font-size: 0.9em;
+            color: #1a1a1a;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            flex: 1;
+        }
+        .history-score {
+            font-size: 0.85em;
+            font-weight: 600;
+            color: #666;
+            margin-left: 12px;
+        }
+        .history-empty {
+            color: #999;
+            font-size: 0.9em;
+            text-align: center;
+            padding: 20px;
+        }
+        .input-section {
+            background: white;
+            padding: 24px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 24px;
+        }
+        .input-group {
+            display: flex;
+            gap: 8px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #d0d0d0;
+            border-radius: 3px;
+            font-size: 15px;
+            font-family: inherit;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #1a1a1a;
+        }
+        button {
+            padding: 12px 24px;
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #333;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            display: none;
+        }
+        .score-display {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 32px;
+            margin-bottom: 24px;
+            text-align: center;
+        }
+        .score-number {
+            font-size: 3.5em;
+            font-weight: 600;
+            margin: 12px 0;
+            color: #1a1a1a;
+        }
+        .score-label {
+            font-size: 0.95em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .score-grade {
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #1a1a1a;
+            margin-top: 8px;
+        }
+        .copy-button {
+            margin-top: 16px;
+            padding: 10px 20px;
+            background: white;
+            color: #1a1a1a;
+            border: 1px solid #1a1a1a;
+            border-radius: 3px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        .copy-button:hover {
+            background: #1a1a1a;
+            color: white;
+        }
+        .copy-button.copied {
+            background: #22c55e;
+            border-color: #22c55e;
+            color: white;
+        }
+        .recommendations {
+            background: #fffbeb;
+            border: 1px solid #fbbf24;
+            border-radius: 4px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .recommendations h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: #1a1a1a;
+        }
+        .recommendations ol {
+            margin-left: 20px;
+        }
+        .recommendations li {
+            margin: 8px 0;
+            color: #1a1a1a;
+            line-height: 1.5;
+        }
+        .checks-grid {
+            display: grid;
+            gap: 16px;
+        }
+        .check-item {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 20px;
+            background: white;
+        }
+        .check-item.pass {
+            border-left: 3px solid #22c55e;
+        }
+        .check-item.fail {
+            border-left: 3px solid #ef4444;
+        }
+        .check-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .check-title {
+            font-size: 1.05em;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        .check-status {
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #666;
+        }
+        .check-details {
+            color: #555;
+            line-height: 1.6;
+            font-size: 0.95em;
+        }
+        .check-details ul {
+            margin: 8px 0 0 20px;
+        }
+        .check-details code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #ef4444;
+            border-radius: 4px;
+            padding: 16px;
+            color: #991b1b;
+            margin-top: 16px;
+            font-size: 0.95em;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            display: none;
+        }
+        .spinner {
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #1a1a1a;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>AEO Readiness Scanner</h1>
+            <p>Analyze how well your content is optimized for AI answer engines</p>
+        </div>
+
+        <div id="historySection" class="history-section" style="display: none;">
+            <div class="history-header">
+                <h3>Recent Scans</h3>
+                <button class="clear-history-btn" onclick="clearHistory()">Clear History</button>
+            </div>
+            <div id="historyList" class="history-list"></div>
+        </div>
+
+        <div class="input-section">
+            <div class="input-group">
+                <input type="text" id="urlInput" placeholder="Enter URL to analyze (e.g., https://example.com/article)" />
+                <button id="analyzeBtn" onclick="analyzeURL()">Analyze</button>
+            </div>
+            <div id="error" class="error-message" style="display: none;"></div>
+        </div>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Analyzing page...</p>
+        </div>
+
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3000/api/fetch';
+        let currentAnalysis = null;
+        let currentUrl = null;
+
+        function loadHistory() {
+            const history = JSON.parse(localStorage.getItem('aeoHistory') || '[]');
+            const historySection = document.getElementById('historySection');
+            const historyList = document.getElementById('historyList');
+            
+            if (history.length === 0) {
+                historySection.style.display = 'none';
+                return;
+            }
+            
+            historySection.style.display = 'block';
+            historyList.innerHTML = history.map((item, index) => `
+                <div class="history-item" onclick="loadHistoryItem(${index})">
+                    <span class="history-url">${item.url}</span>
+                    <span class="history-score">${item.score}/100</span>
+                </div>
+            `).join('');
+        }
+
+        function saveToHistory(url, score, analysis) {
+            const history = JSON.parse(localStorage.getItem('aeoHistory') || '[]');
+            
+            const existing = history.findIndex(item => item.url === url);
+            if (existing !== -1) {
+                history.splice(existing, 1);
+            }
+            
+            history.unshift({
+                url,
+                score,
+                analysis,
+                timestamp: Date.now()
+            });
+            
+            if (history.length > 10) {
+                history.pop();
+            }
+            
+            localStorage.setItem('aeoHistory', JSON.stringify(history));
+            loadHistory();
+        }
+
+        function loadHistoryItem(index) {
+            const history = JSON.parse(localStorage.getItem('aeoHistory') || '[]');
+            const item = history[index];
+            
+            if (item) {
+                document.getElementById('urlInput').value = item.url;
+                currentAnalysis = item.analysis;
+                currentUrl = item.url;
+                displayResults(item.analysis);
+            }
+        }
+
+        function clearHistory() {
+            if (confirm('Are you sure you want to clear all scan history?')) {
+                localStorage.removeItem('aeoHistory');
+                loadHistory();
+                document.getElementById('historySection').style.display = 'none';
+            }
+        }
+
+        window.onload = () => {
+            loadHistory();
+        };
+
+        async function analyzeURL() {
+            const url = document.getElementById('urlInput').value.trim();
+            const errorDiv = document.getElementById('error');
+            const resultsDiv = document.getElementById('results');
+            const loadingDiv = document.getElementById('loading');
+            const analyzeBtn = document.getElementById('analyzeBtn');
+
+            errorDiv.style.display = 'none';
+            resultsDiv.style.display = 'none';
+            
+            if (!url) {
+                errorDiv.textContent = 'Please enter a URL';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                errorDiv.textContent = 'URL must start with http:// or https://';
+                errorDiv.style.display = 'block';
+                return;
+            }
+
+            loadingDiv.style.display = 'block';
+            analyzeBtn.disabled = true;
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to fetch URL');
+                }
+
+                const data = await response.json();
+                const analysis = analyzeHTML(data.html, url, data.statusCode, data.headers, data.finalUrl);
+                currentAnalysis = analysis;
+                currentUrl = url;
+                displayResults(analysis);
+                saveToHistory(url, analysis.score, analysis);
+            } catch (error) {
+                errorDiv.textContent = `Error: ${error.message}`;
+                errorDiv.style.display = 'block';
+            } finally {
+                loadingDiv.style.display = 'none';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        function analyzeHTML(html, url, statusCode, headers, finalUrl) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            let totalPoints = 0;
+            const checks = [];
+            const recommendations = [];
+
+            const answerCheck = checkAnswerExtraction(doc);
+            totalPoints += answerCheck.points;
+            checks.push(answerCheck);
+            if (!answerCheck.pass) recommendations.push(...answerCheck.recommendations);
+
+            const structureCheck = checkContentStructure(doc);
+            totalPoints += structureCheck.points;
+            checks.push(structureCheck);
+            if (!structureCheck.pass) recommendations.push(...structureCheck.recommendations);
+
+            const schemaCheck = checkSchemaPresence(doc);
+            totalPoints += schemaCheck.points;
+            checks.push(schemaCheck);
+            if (!schemaCheck.pass) recommendations.push(...schemaCheck.recommendations);
+
+            const linkingCheck = checkInternalLinking(doc, url);
+            totalPoints += linkingCheck.points;
+            checks.push(linkingCheck);
+            if (!linkingCheck.pass) recommendations.push(...linkingCheck.recommendations);
+
+            const crawlCheck = checkCrawlability(doc, statusCode, headers, url, finalUrl);
+            totalPoints += crawlCheck.points;
+            checks.push(crawlCheck);
+            if (!crawlCheck.pass) recommendations.push(...crawlCheck.recommendations);
+
+            const maxPossible = checks.reduce((sum, check) => sum + check.maxPoints, 0);
+            const normalizedScore = Math.round((totalPoints / maxPossible) * 100);
+
+            return { score: normalizedScore, checks, recommendations };
+        }
+
+        function checkAnswerExtraction(doc) {
+            let points = 0;
+            let details = [];
+            let pass = false;
+            const recommendations = [];
+            const maxPoints = 30;
+
+            const h1 = doc.querySelector('h1');
+            const allPs = doc.querySelectorAll('p');
+            
+            if (h1) {
+                points += 8;
+                details.push(`✓ H1 found: "${h1.textContent.trim().substring(0, 60)}..."`);
+                
+                const h1Text = h1.textContent.toLowerCase();
+                if (h1Text.includes('what') || h1Text.includes('how') || h1Text.includes('why') || h1Text.includes('?')) {
+                    points += 4;
+                    details.push('✓ H1 is formatted as a question');
+                }
+
+                let defParagraph = null;
+                let defLocation = 'none';
+                
+                let nextEl = h1.nextElementSibling;
+                while (nextEl && !defParagraph) {
+                    if (nextEl.tagName === 'P' && nextEl.textContent.trim().length > 0) {
+                        defParagraph = nextEl;
+                        defLocation = 'directly after H1';
+                        break;
+                    }
+                    nextEl = nextEl.nextElementSibling;
+                }
+
+                if (!defParagraph) {
+                    const defDivs = doc.querySelectorAll('[class*="definition"], [class*="intro"], [class*="answer"], [class*="summary"]');
+                    for (const div of defDivs) {
+                        const p = div.querySelector('p');
+                        if (p && p.textContent.trim().length > 0) {
+                            defParagraph = p;
+                            defLocation = `in ${div.className}`;
+                            break;
+                        }
+                    }
+                }
+
+                if (!defParagraph && allPs.length > 0) {
+                    defParagraph = allPs[0];
+                    defLocation = 'first paragraph on page';
+                }
+
+                if (defParagraph) {
+                    const defText = defParagraph.textContent.trim();
+                    const h1Words = h1.textContent.trim().toLowerCase()
+                        .split(/\s+/)
+                        .filter(word => word.length > 3 && !['what', 'when', 'where', 'which', 'how', 'why', 'does', 'the', 'this', 'that', 'these', 'those', 'with', 'from', 'into', 'about'].includes(word));
+                    const defLower = defText.toLowerCase();
+                    
+                    const hasIsA = defLower.includes(' is a ') || defLower.includes(' are ') || defLower.includes(' refers to ');
+                    const mentionsH1Entity = h1Words.some(word => defLower.includes(word));
+                    
+                    if (defText.length > 0 && defText.length <= 150) {
+                        points += 12;
+                        details.push(`✓ Concise definition found (${defText.length} chars, ${defLocation})`);
+                        if (hasIsA) {
+                            points += 4;
+                            details.push('✓ Definition uses "is a" or "refers to" pattern');
+                        }
+                        if (mentionsH1Entity) {
+                            points += 2;
+                            details.push('✓ Definition references H1 entity');
+                        }
+                    } else if (defText.length > 150 && defText.length <= 300) {
+                        points += 6;
+                        details.push(`⚠ Definition paragraph found but too long (${defText.length} chars, ${defLocation})`);
+                        recommendations.push('Shorten the opening definition to under 150 characters for better AI extraction');
+                    } else if (defText.length > 300) {
+                        points += 3;
+                        details.push(`⚠ Definition paragraph is very long (${defText.length} chars)`);
+                        recommendations.push('Add a concise definition paragraph (under 150 chars) directly after the H1');
+                    }
+                } else {
+                    details.push('✗ No definition paragraph found');
+                    recommendations.push('Add a concise definition paragraph directly after the H1 (under 150 characters)');
+                }
+            } else {
+                details.push('✗ No H1 found');
+                recommendations.push('Add a clear H1 heading, ideally formatted as a question');
+            }
+
+            pass = points >= 18;
+
+            return {
+                title: 'Answer Extraction',
+                points,
+                maxPoints,
+                pass,
+                details: details.join('\n'),
+                recommendations
+            };
+        }
+
+        function checkContentStructure(doc) {
+            let points = 0;
+            let details = [];
+            const recommendations = [];
+            const maxPoints = 25;
+
+            const h2s = doc.querySelectorAll('h2');
+            const h3s = doc.querySelectorAll('h3');
+            const lists = doc.querySelectorAll('ul, ol');
+
+            if (h2s.length >= 4) {
+                points += 12;
+                details.push(`✓ Good H2 structure (${h2s.length} sections)`);
+            } else if (h2s.length >= 2) {
+                points += 6;
+                details.push(`⚠ Limited H2 sections (${h2s.length} found, 4+ recommended)`);
+                recommendations.push(`Add ${4 - h2s.length} more H2 sections to improve content structure`);
+            } else {
+                details.push('✗ No H2 sections found');
+                recommendations.push('Break content into at least 4 H2 sections for better AI comprehension');
+            }
+
+            if (h3s.length >= 2) {
+                points += 5;
+                details.push(`✓ H3 subsections present (${h3s.length})`);
+            } else if (h3s.length === 1) {
+                points += 2;
+                details.push('⚠ Only 1 H3 subsection');
+            }
+
+            if (lists.length >= 2) {
+                points += 8;
+                details.push(`✓ Lists/steps present (${lists.length} found)`);
+            } else if (lists.length === 1) {
+                points += 4;
+                details.push('⚠ Only 1 list found');
+                recommendations.push('Add more bulleted or numbered lists to structure information for AI parsing');
+            } else {
+                details.push('✗ No lists or structured steps');
+                recommendations.push('Add bulleted or numbered lists to structure information for AI parsing');
+            }
+
+            pass = points >= 15;
+
+            return {
+                title: 'Content Structure',
+                points,
+                maxPoints,
+                pass,
+                details: details.join('\n'),
+                recommendations
+            };
+        }
+
+        function checkSchemaPresence(doc) {
+            let points = 0;
+            let details = [];
+            const recommendations = [];
+            const schemas = new Set();
+            const maxPoints = 25;
+
+            const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+            
+            scripts.forEach(script => {
+                try {
+                    const json = JSON.parse(script.textContent);
+                    
+                    const processNode = (node) => {
+                        if (!node) return;
+                        
+                        if (Array.isArray(node)) {
+                            node.forEach(processNode);
+                            return;
+                        }
+                        
+                        if (node['@graph']) {
+                            if (Array.isArray(node['@graph'])) {
+                                node['@graph'].forEach(processNode);
+                            }
+                            return;
+                        }
+                        
+                        const type = node['@type'];
+                        if (type) {
+                            const types = Array.isArray(type) ? type : [type];
+                            types.forEach(t => {
+                                const normalized = t.replace(/^https?:\/\/schema\.org\//, '');
+                                schemas.add(normalized);
+                            });
+                        }
+                    };
+                    
+                    processNode(json);
+                    
+                } catch (e) {
+                    details.push('⚠ Invalid JSON-LD detected');
+                }
+            });
+
+            const schemaArray = Array.from(schemas);
+            
+            if (schemaArray.some(s => s.includes('Article') || s === 'NewsArticle' || s === 'BlogPosting')) {
+                points += 10;
+            } else {
+                recommendations.push('Add Article or BlogPosting schema markup using JSON-LD');
+            }
+            
+            if (schemaArray.some(s => s.includes('FAQ'))) {
+                points += 8;
+            } else {
+                recommendations.push('Add FAQ schema if content includes questions and answers');
+            }
+            
+            if (schemaArray.some(s => s.includes('Breadcrumb'))) {
+                points += 4;
+            }
+            
+            if (schemaArray.some(s => s.includes('Organization'))) {
+                points += 3;
+            }
+
+            if (schemaArray.length > 0) {
+                details.push(`✓ Schemas found: ${schemaArray.join(', ')}`);
+            } else {
+                details.push('✗ No schema markup detected');
+            }
+
+            pass = points >= 10;
+
+            return {
+                title: 'Schema Markup',
+                points,
+                maxPoints,
+                pass,
+                details: details.join('\n'),
+                recommendations
+            };
+        }
+
+        function checkInternalLinking(doc, url) {
+            let points = 0;
+            let details = [];
+            const recommendations = [];
+            const maxPoints = 10;
+
+            try {
+                const baseUrl = new URL(url);
+                const links = doc.querySelectorAll('a[href]');
+                const internalLinks = [];
+
+                links.forEach(link => {
+                    const href = link.getAttribute('href');
+                    if (href && !href.startsWith('#')) {
+                        try {
+                            const linkUrl = new URL(href, url);
+                            if (linkUrl.hostname === baseUrl.hostname) {
+                                internalLinks.push({
+                                    text: link.textContent.trim(),
+                                    href: href
+                                });
+                            }
+                        } catch (e) {}
+                    }
+                });
+
+                if (internalLinks.length >= 3) {
+                    points += 6;
+                    details.push(`✓ Good internal linking (${internalLinks.length} links)`);
+                } else if (internalLinks.length > 0) {
+                    points += 3;
+                    details.push(`⚠ Limited internal links (${internalLinks.length} found, 3+ recommended)`);
+                    recommendations.push(`Add ${3 - internalLinks.length} more internal links to related topics`);
+                } else {
+                    details.push('✗ No internal links found');
+                    recommendations.push('Add at least 3 internal links to related content on your site');
+                }
+
+                const descriptiveLinks = internalLinks.filter(link => 
+                    link.text.length > 3 && 
+                    !link.text.toLowerCase().includes('click here') &&
+                    !link.text.toLowerCase().includes('read more') &&
+                    link.text.toLowerCase() !== 'here'
+                ).length;
+
+                if (descriptiveLinks === internalLinks.length && internalLinks.length > 0) {
+                    points += 4;
+                    details.push('✓ All anchors are descriptive');
+                } else if (descriptiveLinks > 0) {
+                    points += 2;
+                    details.push(`⚠ ${descriptiveLinks}/${internalLinks.length} anchors are descriptive`);
+                    recommendations.push('Replace generic anchor text (click here, read more) with descriptive phrases');
+                } else if (internalLinks.length > 0) {
+                    recommendations.push('Use descriptive anchor text instead of generic phrases');
+                }
+
+            } catch (e) {
+                details.push('⚠ Could not analyze links');
+            }
+
+            pass = points >= 6;
+
+            return {
+                title: 'Internal Linking',
+                points,
+                maxPoints,
+                pass,
+                details: details.join('\n'),
+                recommendations
+            };
+        }
+
+        function checkCrawlability(doc, statusCode, headers, originalUrl, finalUrl) {
+            let points = 0;
+            let details = [];
+            const recommendations = [];
+            const maxPoints = 10;
+
+            if (statusCode === 200) {
+                points += 3;
+                details.push('✓ HTTP 200 status code');
+            } else if (statusCode >= 300 && statusCode < 400) {
+                points += 1;
+                details.push(`⚠ Redirect detected (${statusCode})`);
+                if (originalUrl !== finalUrl) {
+                    details.push(`Redirects to: ${finalUrl}`);
+                }
+            } else {
+                details.push(`✗ Non-200 status code: ${statusCode}`);
+                recommendations.push('Fix HTTP status code to 200 for proper indexing');
+            }
+
+            const robotsMeta = doc.querySelector('meta[name="robots"]');
+            const noindex = robotsMeta && robotsMeta.content.toLowerCase().includes('noindex');
+            const xRobotsTag = headers['x-robots-tag'];
+            const xRobotsNoindex = xRobotsTag && xRobotsTag.toLowerCase().includes('noindex');
+            
+            if (!noindex && !xRobotsNoindex) {
+                points += 3;
+                details.push('✓ No noindex directives');
+            } else {
+                if (noindex) {
+                    details.push('✗ Meta robots noindex found');
+                }
+                if (xRobotsNoindex) {
+                    details.push('✗ X-Robots-Tag noindex found');
+                }
+                recommendations.push('Remove noindex directives to allow AI search engines to index this page');
+            }
+
+            const canonical = doc.querySelector('link[rel="canonical"]');
+            if (canonical) {
+                points += 2;
+                details.push('✓ Canonical tag present');
+            } else {
+                details.push('⚠ No canonical tag');
+                recommendations.push('Add a canonical tag to specify the preferred URL version');
+            }
+
+            const title = doc.querySelector('title');
+            if (title && title.textContent.trim()) {
+                points += 2;
+                details.push('✓ Title tag present');
+            } else {
+                details.push('✗ Missing or empty title tag');
+                recommendations.push('Add a descriptive title tag');
+            }
+
+            pass = points >= 6;
+
+            return {
+                title: 'Crawlability',
+                points,
+                maxPoints,
+                pass,
+                details: details.join('\n'),
+                recommendations
+            };
+        }
+
+        function displayResults(analysis) {
+            const resultsDiv = document.getElementById('results');
+            
+            const scoreGrade = analysis.score >= 80 ? 'Excellent' :
+                              analysis.score >= 60 ? 'Good' :
+                              analysis.score >= 40 ? 'Fair' : 'Needs Improvement';
+
+            let html = `
+                <div class="score-display">
+                    <div class="score-label">AEO Readiness Score</div>
+                    <div class="score-number">${analysis.score}/100</div>
+                    <div class="score-grade">${scoreGrade}</div>
+                    <button class="copy-button" onclick="copyReport()">Copy Report</button>
+                </div>
+            `;
+
+            if (analysis.recommendations.length > 0) {
+                html += `
+                    <div class="recommendations">
+                        <h3>Top Priority Fixes</h3>
+                        <ol>
+                `;
+                
+                const priorityRecs = analysis.recommendations.slice(0, 5);
+                priorityRecs.forEach(rec => {
+                    html += `<li>${rec}</li>`;
+                });
+                
+                html += `
+                        </ol>
+                    </div>
+                `;
+            }
+
+            html += '<div class="checks-grid">';
+
+            analysis.checks.forEach(check => {
+                html += `
+                    <div class="check-item ${check.pass ? 'pass' : 'fail'}">
+                        <div class="check-header">
+                            <div class="check-title">${check.title}</div>
+                            <div class="check-status">
+                                ${check.points}/${check.maxPoints} pts
+                            </div>
+                        </div>
+                        <div class="check-details">${check.details.replace(/\n/g, '<br>')}</div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+            resultsDiv.style.display = 'block';
+        }
+
+        function copyReport() {
+            if (!currentAnalysis || !currentUrl) return;
+            
+            const analysis = currentAnalysis;
+            const scoreGrade = analysis.score >= 80 ? 'Excellent' :
+                              analysis.score >= 60 ? 'Good' :
+                              analysis.score >= 40 ? 'Fair' : 'Needs Improvement';
+            
+            let report = `# AEO Readiness Report\n\n`;
+            report += `**URL**: ${currentUrl}\n`;
+            report += `**Score**: ${analysis.score}/100 (${scoreGrade})\n`;
+            report += `**Date**: ${new Date().toLocaleDateString()}\n\n`;
+            
+            if (analysis.recommendations.length > 0) {
+                report += `## Top Priority Fixes\n\n`;
+                analysis.recommendations.slice(0, 5).forEach((rec, i) => {
+                    report += `${i + 1}. ${rec}\n`;
+                });
+                report += `\n`;
+            }
+            
+            report += `## Detailed Analysis\n\n`;
+            
+            analysis.checks.forEach(check => {
+                const status = check.pass ? '✓ PASS' : '✗ FAIL';
+                report += `### ${check.title} - ${check.points}/${check.maxPoints} pts ${status}\n\n`;
+                report += check.details.split('\n').map(line => `- ${line}`).join('\n');
+                report += `\n\n`;
+            });
+            
+            report += `---\n`;
+            report += `Generated by AEO Readiness Scanner`;
+            
+            navigator.clipboard.writeText(report).then(() => {
+                const btn = document.querySelector('.copy-button');
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }).catch(err => {
+                alert('Failed to copy report. Please try again.');
+            });
+        }
+
+        document.getElementById('urlInput').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeURL();
+            }
+        });
+    </script>
+</body>
+</html>
