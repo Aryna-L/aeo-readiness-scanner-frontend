@@ -152,6 +152,8 @@
 
 <script>
 const API_URL = 'https://aeo-scanner-backend.onrender.com/api/analyze';
+let currentAnalysis = null;
+let currentUrl = null;
 
 async function analyzeURL() {
     const url = document.getElementById('urlInput').value.trim();
@@ -169,6 +171,12 @@ async function analyzeURL() {
         return;
     }
 
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        errorDiv.textContent = 'URL must start with http:// or https://';
+        errorDiv.style.display = 'block';
+        return;
+    }
+
     loadingDiv.style.display = 'block';
     analyzeBtn.disabled = true;
 
@@ -180,15 +188,17 @@ async function analyzeURL() {
         });
 
         if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || 'Failed to analyze URL');
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to analyze URL');
         }
 
         const analysis = await response.json();
+        currentAnalysis = analysis;
+        currentUrl = url;
         displayResults(analysis);
 
     } catch (error) {
-        errorDiv.textContent = 'Error: ' + error.message;
+        errorDiv.textContent = `Error: ${error.message}`;
         errorDiv.style.display = 'block';
     } finally {
         loadingDiv.style.display = 'none';
@@ -210,6 +220,7 @@ function displayResults(analysis) {
             <div class="score-label">AEO Readiness Score</div>
             <div class="score-number">${analysis.score}/100</div>
             <div class="score-grade">${scoreGrade}</div>
+            <button class="copy-button" onclick="copyReport()">Copy Report</button>
         </div>
     `;
 
@@ -218,33 +229,80 @@ function displayResults(analysis) {
             <div class="recommendations">
                 <h3>Top Priority Fixes</h3>
                 <ol>
-                    ${analysis.recommendations.slice(0,5).map(r => `<li>${r}</li>`).join('')}
+        `;
+        analysis.recommendations.slice(0, 5).forEach(rec => {
+            html += `<li>${rec}</li>`;
+        });
+        html += `
                 </ol>
             </div>
         `;
     }
 
-    if (analysis.checks && analysis.checks.length > 0) {
-        html += '<div class="checks-grid">';
+    html += '<div class="checks-grid">';
 
-        analysis.checks.forEach(check => {
-            html += `
-                <div class="check-item ${check.pass ? 'pass' : 'fail'}">
-                    <div class="check-header">
-                        <div class="check-title">${check.title}</div>
-                        <div class="check-status">${check.points}/${check.maxPoints} pts</div>
+    analysis.checks.forEach(check => {
+        html += `
+            <div class="check-item ${check.pass ? 'pass' : 'fail'}">
+                <div class="check-header">
+                    <div class="check-title">${check.title}</div>
+                    <div class="check-status">
+                        ${check.points}/${check.maxPoints} pts
                     </div>
-                    <div class="check-details">${check.details.replace(/\n/g,'<br>')}</div>
                 </div>
-            `;
-        });
+                <div class="check-details">${check.details || ''}</div>
+            </div>
+        `;
+    });
 
-        html += '</div>';
-    }
-
+    html += '</div>';
     resultsDiv.innerHTML = html;
     resultsDiv.style.display = 'block';
 }
+
+function copyReport() {
+    if (!currentAnalysis || !currentUrl) return;
+
+    const analysis = currentAnalysis;
+
+    let report = `# AEO Readiness Report\n\n`;
+    report += `**URL**: ${currentUrl}\n`;
+    report += `**Score**: ${analysis.score}/100\n`;
+    report += `**Date**: ${new Date().toLocaleDateString()}\n\n`;
+
+    if (analysis.recommendations.length > 0) {
+        report += `## Top Priority Fixes\n\n`;
+        analysis.recommendations.slice(0, 5).forEach((rec, i) => {
+            report += `${i + 1}. ${rec}\n`;
+        });
+        report += `\n`;
+    }
+
+    report += `## Detailed Analysis\n\n`;
+
+    analysis.checks.forEach(check => {
+        const status = check.pass ? '✓ PASS' : '✗ FAIL';
+        report += `### ${check.title} - ${check.points}/${check.maxPoints} pts ${status}\n\n`;
+        report += `- ${check.details}\n\n`;
+    });
+
+    navigator.clipboard.writeText(report).then(() => {
+        const btn = document.querySelector('.copy-button');
+        const originalText = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.textContent = originalText;
+            btn.classList.remove('copied');
+        }, 2000);
+    });
+}
+
+document.getElementById('urlInput').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') analyzeURL();
+});
 </script>
+    
 </body>
 </html>
+
