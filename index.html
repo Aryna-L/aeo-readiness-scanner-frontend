@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AEO Readiness Scanner</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -50,7 +51,6 @@
         button:hover { background: #333; }
         button:disabled { background: #ccc; cursor: not-allowed; }
 
-        /* History Section */
         .history-section {
             background: white;
             border: 1px solid #e0e0e0;
@@ -155,8 +155,23 @@
             margin-top: 8px;
         }
 
-        .copy-button {
+        .action-buttons {
             margin-top: 16px;
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+        }
+
+        .copy-button, .pdf-button {
+            padding: 10px 20px;
+        }
+
+        .pdf-button {
+            background: #2563eb;
+        }
+
+        .pdf-button:hover {
+            background: #1d4ed8;
         }
 
         .recommendations {
@@ -182,6 +197,7 @@
 
         .check-item.pass { border-left: 3px solid #22c55e; }
         .check-item.fail { border-left: 3px solid #ef4444; }
+        .check-item.optional { border-left: 3px solid #3b82f6; }
 
         .check-header {
             display: flex;
@@ -206,6 +222,17 @@
         }
 
         .loading { text-align: center; padding: 40px; color: #666; display: none; }
+
+        .optional-badge {
+            display: inline-block;
+            background: #3b82f6;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 0.75em;
+            margin-left: 8px;
+            font-weight: 500;
+        }
     </style>
 </head>
 <body>
@@ -244,7 +271,6 @@ const MAX_HISTORY = 10;
 let currentAnalysis = null;
 let currentUrl = null;
 
-// Load history on page load
 window.addEventListener('load', () => {
     loadHistory();
     checkUrlParameter();
@@ -398,7 +424,10 @@ function displayResults(analysis) {
             <div class="score-label">AEO Readiness Score</div>
             <div class="score-number">${analysis.score}/100</div>
             <div class="score-grade">${scoreGrade}</div>
-            <button class="copy-button" onclick="copyReport()">Copy Report</button>
+            <div class="action-buttons">
+                <button class="copy-button" onclick="copyReport()">Copy Report</button>
+                <button class="pdf-button" onclick="exportToPDF()">Export to PDF</button>
+            </div>
         </div>
     `;
 
@@ -420,10 +449,13 @@ function displayResults(analysis) {
     html += '<div class="checks-grid">';
 
     analysis.checks.forEach(check => {
+        const statusClass = check.isOptional ? 'optional' : (check.pass ? 'pass' : 'fail');
+        const optionalBadge = check.isOptional ? '<span class="optional-badge">OPTIONAL</span>' : '';
+        
         html += `
-            <div class="check-item ${check.pass ? 'pass' : 'fail'}">
+            <div class="check-item ${statusClass}">
                 <div class="check-header">
-                    <div class="check-title">${escapeHtml(check.title)}</div>
+                    <div class="check-title">${escapeHtml(check.title)}${optionalBadge}</div>
                     <div class="check-status">
                         ${check.points}/${check.maxPoints} pts
                     </div>
@@ -460,8 +492,9 @@ function copyReport() {
 
     analysis.checks.forEach(check => {
         const status = check.pass ? '✓ PASS' : '✗ FAIL';
-        report += `### ${check.title} - ${check.points}/${check.maxPoints} pts ${status}\n\n`;
-        report += `- ${check.details}\n\n`;
+        const optional = check.isOptional ? ' (OPTIONAL)' : '';
+        report += `### ${check.title}${optional} - ${check.points}/${check.maxPoints} pts ${status}\n\n`;
+        report += `${check.details}\n\n`;
     });
 
     navigator.clipboard.writeText(report).then(() => {
@@ -472,6 +505,113 @@ function copyReport() {
             btn.textContent = originalText;
         }, 2000);
     });
+}
+
+function exportToPDF() {
+    if (!currentAnalysis || !currentUrl) return;
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    const analysis = currentAnalysis;
+    let yPos = 20;
+    
+    // Title
+    doc.setFontSize(20);
+    doc.setFont(undefined, 'bold');
+    doc.text('AEO Readiness Report', 20, yPos);
+    yPos += 15;
+    
+    // Basic info
+    doc.setFontSize(11);
+    doc.setFont(undefined, 'normal');
+    doc.text(`URL: ${currentUrl}`, 20, yPos);
+    yPos += 7;
+    doc.text(`Score: ${analysis.score}/100`, 20, yPos);
+    yPos += 7;
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, yPos);
+    yPos += 15;
+    
+    // Score grade
+    const scoreGrade = analysis.score >= 80 ? 'Excellent' : 
+                       analysis.score >= 60 ? 'Good' : 
+                       analysis.score >= 40 ? 'Fair' : 'Needs Improvement';
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Grade: ${scoreGrade}`, 20, yPos);
+    yPos += 12;
+    
+    // Recommendations
+    if (analysis.recommendations && analysis.recommendations.length > 0) {
+        doc.setFontSize(13);
+        doc.setFont(undefined, 'bold');
+        doc.text('Top Priority Fixes:', 20, yPos);
+        yPos += 8;
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        analysis.recommendations.slice(0, 5).forEach((rec, i) => {
+            const lines = doc.splitTextToSize(`${i + 1}. ${rec}`, 170);
+            lines.forEach(line => {
+                if (yPos > 270) {
+                    doc.addPage();
+                    yPos = 20;
+                }
+                doc.text(line, 20, yPos);
+                yPos += 6;
+            });
+        });
+        yPos += 8;
+    }
+    
+    // Detailed checks
+    doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
+    doc.text('Detailed Analysis:', 20, yPos);
+    yPos += 10;
+    
+    analysis.checks.forEach(check => {
+        if (yPos > 250) {
+            doc.addPage();
+            yPos = 20;
+        }
+        
+        const status = check.pass ? 'PASS' : 'FAIL';
+        const optional = check.isOptional ? ' (OPTIONAL)' : '';
+        
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'bold');
+        doc.text(`${check.title}${optional}`, 20, yPos);
+        yPos += 6;
+        
+        doc.setFontSize(10);
+        doc.setFont(undefined, 'normal');
+        doc.text(`${check.points}/${check.maxPoints} pts - ${status}`, 20, yPos);
+        yPos += 6;
+        
+        const detailLines = doc.splitTextToSize(check.details || 'No details', 170);
+        detailLines.forEach(line => {
+            if (yPos > 270) {
+                doc.addPage();
+                yPos = 20;
+            }
+            doc.text(line, 20, yPos);
+            yPos += 5;
+        });
+        yPos += 8;
+    });
+    
+    // Save the PDF
+    const filename = `AEO-Report-${new Date().toISOString().split('T')[0]}.pdf`;
+    doc.save(filename);
+    
+    // Show feedback
+    const btn = document.querySelector('.pdf-button');
+    const originalText = btn.textContent;
+    btn.textContent = '✓ Downloaded!';
+    setTimeout(() => {
+        btn.textContent = originalText;
+    }, 2000);
 }
 
 function escapeHtml(text) {
